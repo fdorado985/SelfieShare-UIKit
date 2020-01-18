@@ -1,2 +1,4 @@
 line_length: 200
-unused_optional_binding: false
+
+colon:
+  apply_to_dictionaries: false
