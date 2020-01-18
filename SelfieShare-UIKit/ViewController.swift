@@ -7,12 +7,16 @@
 //
 
 import UIKit
+import MultipeerConnectivity
 
 class ViewController: UICollectionViewController {
 
   // MARK: - Properties
 
   var images = [UIImage]()
+  var peerID = MCPeerID(displayName: UIDevice.current.name)
+  var mcSession: MCSession?
+  var mcAdvertiserAssistant: MCAdvertiserAssistant?
 
   // MARK: - View lifecycle apply_to_dictionaries: true
 
@@ -21,6 +25,10 @@ class ViewController: UICollectionViewController {
 
     title = "Selfie Share"
     navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .camera, target: self, action: #selector(importPicture))
+    navigationItem.leftBarButtonItem = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(showConnectionPrompt))
+
+    mcSession = MCSession(peer: peerID, securityIdentity: nil, encryptionPreference: .required)
+    mcSession?.delegate = self
   }
 
   // MARK: - Methods
@@ -30,6 +38,27 @@ class ViewController: UICollectionViewController {
     picker.allowsEditing = true
     picker.delegate = self
     present(picker, animated: true)
+  }
+
+  @objc func showConnectionPrompt() {
+    let alertController = UIAlertController(title: "Connect to others", message: nil, preferredStyle: .alert)
+    alertController.addAction(UIAlertAction(title: "Host a session", style: .default, handler: startHosting))
+    alertController.addAction(UIAlertAction(title: "Join a session", style: .default, handler: joinSession))
+    alertController.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+    present(alertController, animated: true)
+  }
+
+  func startHosting(action: UIAlertAction) {
+    guard let mcSession = mcSession else { return }
+    mcAdvertiserAssistant = MCAdvertiserAssistant(serviceType: "dorado-selfieshare", discoveryInfo: nil, session: mcSession)
+    mcAdvertiserAssistant?.start()
+  }
+
+  func joinSession(action: UIAlertAction) {
+    guard let mcSession = mcSession else { return }
+    let mcBrowser = MCBrowserViewController(serviceType: "dorado-selfieshare", session: mcSession)
+    mcBrowser.delegate = self
+    present(mcBrowser, animated: true)
   }
 }
 
@@ -63,5 +92,43 @@ extension ViewController {
     }
 
     return cell
+  }
+}
+
+// MARK: - MCSession delegate
+
+extension ViewController: MCSessionDelegate {
+
+  func session(_ session: MCSession, peer peerID: MCPeerID, didChange state: MCSessionState) {
+
+  }
+
+  func session(_ session: MCSession, didReceive data: Data, fromPeer peerID: MCPeerID) {
+
+  }
+
+  func session(_ session: MCSession, didReceive stream: InputStream, withName streamName: String, fromPeer peerID: MCPeerID) {
+
+  }
+
+  func session(_ session: MCSession, didStartReceivingResourceWithName resourceName: String, fromPeer peerID: MCPeerID, with progress: Progress) {
+
+  }
+
+  func session(_ session: MCSession, didFinishReceivingResourceWithName resourceName: String, fromPeer peerID: MCPeerID, at localURL: URL?, withError error: Error?) {
+
+  }
+}
+
+// MARK: - MCBrowserViewController delegate
+
+extension ViewController: MCBrowserViewControllerDelegate {
+
+  func browserViewControllerDidFinish(_ browserViewController: MCBrowserViewController) {
+
+  }
+
+  func browserViewControllerWasCancelled(_ browserViewController: MCBrowserViewController) {
+
   }
 }
