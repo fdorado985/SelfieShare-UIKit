@@ -16,7 +16,7 @@ class ViewController: UICollectionViewController {
   var images = [UIImage]()
   var peerID = MCPeerID(displayName: UIDevice.current.name)
   var mcSession: MCSession?
-  var mcAdvertiserAssistant: MCAdvertiserAssistant?
+  var mcAdvertiserAssistant: MCNearbyServiceAdvertiser?
 
   // MARK: - View lifecycle
 
@@ -49,9 +49,9 @@ class ViewController: UICollectionViewController {
   }
 
   func startHosting(action: UIAlertAction) {
-    guard let mcSession = mcSession else { return }
-    mcAdvertiserAssistant = MCAdvertiserAssistant(serviceType: "jd-selfieshare", discoveryInfo: nil, session: mcSession)
-    mcAdvertiserAssistant?.start()
+    mcAdvertiserAssistant = MCNearbyServiceAdvertiser(peer: peerID, discoveryInfo: nil, serviceType: "jd-selfieshare")
+    mcAdvertiserAssistant?.delegate = self
+    mcAdvertiserAssistant?.startAdvertisingPeer()
   }
 
   func joinSession(action: UIAlertAction) {
@@ -153,5 +153,14 @@ extension ViewController: MCBrowserViewControllerDelegate {
 
   func browserViewControllerWasCancelled(_ browserViewController: MCBrowserViewController) {
     dismiss(animated: true)
+  }
+}
+
+// MARK: - MCNearbyServiceAdvertiser delegate
+
+extension ViewController: MCNearbyServiceAdvertiserDelegate {
+
+  func advertiser(_ advertiser: MCNearbyServiceAdvertiser, didReceiveInvitationFromPeer peerID: MCPeerID, withContext context: Data?, invitationHandler: @escaping (Bool, MCSession?) -> Void) {
+    invitationHandler(true, mcSession)
   }
 }
