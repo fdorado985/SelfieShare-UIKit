@@ -18,7 +18,7 @@ class ViewController: UICollectionViewController {
   var mcSession: MCSession?
   var mcAdvertiserAssistant: MCAdvertiserAssistant?
 
-  // MARK: - View lifecycle apply_to_dictionaries: true
+  // MARK: - View lifecycle
 
   override func viewDidLoad() {
     super.viewDidLoad()
@@ -41,7 +41,7 @@ class ViewController: UICollectionViewController {
   }
 
   @objc func showConnectionPrompt() {
-    let alertController = UIAlertController(title: "Connect to others", message: nil, preferredStyle: .alert)
+    let alertController = UIAlertController(title: "Connect to others", message: nil, preferredStyle: .actionSheet)
     alertController.addAction(UIAlertAction(title: "Host a session", style: .default, handler: startHosting))
     alertController.addAction(UIAlertAction(title: "Join a session", style: .default, handler: joinSession))
     alertController.addAction(UIAlertAction(title: "Cancel", style: .cancel))
@@ -50,13 +50,13 @@ class ViewController: UICollectionViewController {
 
   func startHosting(action: UIAlertAction) {
     guard let mcSession = mcSession else { return }
-    mcAdvertiserAssistant = MCAdvertiserAssistant(serviceType: "dorado-selfieshare", discoveryInfo: nil, session: mcSession)
+    mcAdvertiserAssistant = MCAdvertiserAssistant(serviceType: "jd-selfieshare", discoveryInfo: nil, session: mcSession)
     mcAdvertiserAssistant?.start()
   }
 
   func joinSession(action: UIAlertAction) {
     guard let mcSession = mcSession else { return }
-    let mcBrowser = MCBrowserViewController(serviceType: "dorado-selfieshare", session: mcSession)
+    let mcBrowser = MCBrowserViewController(serviceType: "jd-selfieshare", session: mcSession)
     mcBrowser.delegate = self
     present(mcBrowser, animated: true)
   }
@@ -73,6 +73,20 @@ extension ViewController: UINavigationControllerDelegate, UIImagePickerControlle
 
     images.insert(image, at: 0)
     collectionView.reloadData()
+
+    // send image data to peers
+    guard let mcSession = mcSession else { return }
+    if mcSession.connectedPeers.count > 0 {
+      if let imageData = image.pngData() {
+        do {
+          try mcSession.send(imageData, toPeers: mcSession.connectedPeers, with: .reliable)
+        } catch {
+          let alertController = UIAlertController(title: "Send error!", message: error.localizedDescription, preferredStyle: .alert)
+          alertController.addAction(UIAlertAction(title: "Ok", style: .default))
+          present(alertController, animated: true)
+        }
+      }
+    }
   }
 }
 
@@ -100,24 +114,33 @@ extension ViewController {
 extension ViewController: MCSessionDelegate {
 
   func session(_ session: MCSession, peer peerID: MCPeerID, didChange state: MCSessionState) {
-
+    switch state {
+    case .connected:
+      print("Connected: \(peerID.displayName)")
+    case .connecting:
+      print("Connecting: \(peerID.displayName)")
+    case .notConnected:
+      print("Not Connected: \(peerID.displayName)")
+    @unknown default:
+      print("Unknown state received: \(peerID.displayName)")
+    }
   }
 
   func session(_ session: MCSession, didReceive data: Data, fromPeer peerID: MCPeerID) {
-
+    DispatchQueue.main.async { [weak self] in
+      guard let self = self else { return }
+      if let image = UIImage(data: data) {
+        self.images.insert(image, at: 0)
+        self.collectionView.reloadData()
+      }
+    }
   }
 
-  func session(_ session: MCSession, didReceive stream: InputStream, withName streamName: String, fromPeer peerID: MCPeerID) {
+  func session(_ session: MCSession, didReceive stream: InputStream, withName streamName: String, fromPeer peerID: MCPeerID) { }
 
-  }
+  func session(_ session: MCSession, didStartReceivingResourceWithName resourceName: String, fromPeer peerID: MCPeerID, with progress: Progress) { }
 
-  func session(_ session: MCSession, didStartReceivingResourceWithName resourceName: String, fromPeer peerID: MCPeerID, with progress: Progress) {
-
-  }
-
-  func session(_ session: MCSession, didFinishReceivingResourceWithName resourceName: String, fromPeer peerID: MCPeerID, at localURL: URL?, withError error: Error?) {
-
-  }
+  func session(_ session: MCSession, didFinishReceivingResourceWithName resourceName: String, fromPeer peerID: MCPeerID, at localURL: URL?, withError error: Error?) { }
 }
 
 // MARK: - MCBrowserViewController delegate
@@ -125,10 +148,10 @@ extension ViewController: MCSessionDelegate {
 extension ViewController: MCBrowserViewControllerDelegate {
 
   func browserViewControllerDidFinish(_ browserViewController: MCBrowserViewController) {
-
+    dismiss(animated: true)
   }
 
   func browserViewControllerWasCancelled(_ browserViewController: MCBrowserViewController) {
-
+    dismiss(animated: true)
   }
 }
